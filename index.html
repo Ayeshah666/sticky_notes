@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Square Sticky Notes</title>
+  <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.14.0/Sortable.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/vuedraggable@4.1.0/dist/vuedraggable.umd.min.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Indie+Flower&family=Comic+Neue:wght@400;700&family=Permanent+Marker&family=Dancing+Script:wght@400;700&display=swap" rel="stylesheet">
+  <style>
+    .square-note {
+      width: 300px;
+      height: 330px;
+    }
+    .ghost-note {
+      opacity: 0.5;
+      background: hsl(224, 75%, 17%);
+    }
+    .chosen-note {
+      transform: rotate(3deg);
+      box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    }
+    .note-handle {
+      cursor: grab;
+    }
+    .note-handle:active {
+      cursor: grabbing;
+    }
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 6px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background-color: rgba(0,0,0,0.2);
+      border-radius: 3px;
+    }
+  </style>
+</head>
+<body class="bg-cyan-300 min-h-screen p-6">
+  <div id="app" class="container mx-auto">
+    <div class="flex flex-col sm:flex-row justify-between items-center mb-8 gap-4">
+      <h1 class="text-3xl font-bold text-gray-800">✨Sticky Notes</h1>
+      
+      <div class="flex flex-col sm:flex-row gap-4">
+        <select 
+          v-model="selectedFont" 
+          class="px-3 py-2 border rounded-lg bg-white shadow-sm"
+        >
+          <option 
+            v-for="font in fonts" 
+            :value="font.value" 
+            :key="font.value" 
+            :style="{ fontFamily: font.value }"
+          >
+            {{ font.name }}
+          </option>
+        </select>
+        
+        <button 
+          @click="addNote"
+          class="px-4 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 transition shadow-md"
+        >
+          Add Note +
+        </button>
+      </div>
+    </div>
+
+    <draggable 
+      v-model="notes" 
+      item-key="id"
+      class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
+      @end="onDragEnd"
+      ghost-class="ghost-note"
+      chosen-class="chosen-note"
+      handle=".note-handle"
+    >
+      <template #item="{ element: note }">
+        <div 
+          :style="{ 
+            backgroundColor: note.color,
+            fontFamily: selectedFont
+          }"
+          class="square-note p-4 square-lg shadow-lg flex flex-col transform hover:-rotate-2 transition-transform"
+        >
+          <div class="flex justify-between items-start mb-2 note-handle">
+            <span class="font-bold">Note {{ notes.findIndex(n => n.id === note.id) + 1 }}</span>
+            <button 
+              @click.stop="deleteNote(note.id)"
+              class="text-gray-600 hover:text-red-500 text-x1 font-bold"
+            >
+              ❌
+            </button>
+          </div>
+          
+          <textarea
+            v-model="note.content"
+            class="flex-grow bg-transparent resize-none outline-none overflow-auto custom-scrollbar"
+            placeholder="..."
+          ></textarea>
+          
+          <div class="flex justify-end space-x-2 mt-2">
+            <button 
+              v-for="color in colors" 
+              :key="color"
+              @click.stop="changeNoteColor(note.id, color)"
+              class="w-5 h-5 rounded-full border border-gray-300 hover:scale-110 transition-transform"
+              :style="{ backgroundColor: color }"
+              :class="{ 'ring-2 ring-offset-1 ring-gray-400': note.color === color }"
+            ></button>
+          </div>
+        </div>
+      </template>
+    </draggable>
+  </div>
+
+  <script>
+    const { createApp, ref } = Vue;
+    
+    createApp({
+      setup() {
+        const colors = [
+          '#ebf266', // yellow
+          '#12c1c7', // blue
+          '#98ef52', // green
+          '#e972b8', // red
+          '#e871f6', // purple
+          '#fed7aa', // orange
+        ];
+        
+        const fonts = [
+          { name: 'Indie Flower', value: 'Indie Flower' },
+          { name: 'Comic Neue', value: 'Comic Neue' },
+          { name: 'Permanent Marker', value: 'Permanent Marker' },
+          { name: 'Dancing Script', value: 'Dancing Script' },
+          { name: 'Standard', value: 'sans-serif' },
+        ];
+        
+        const selectedFont = ref('Indie Flower');
+        const notes = ref([]);
+        const nextId = ref(1);
+        
+        const addNote = () => {
+          notes.value.push({
+            id: nextId.value++,
+            content: '',
+            color: colors[Math.floor(Math.random() * colors.length)]
+          });
+        };
+        
+        const deleteNote = (id) => {
+          notes.value = notes.value.filter(note => note.id !== id);
+        };
+        
+        const changeNoteColor = (id, color) => {
+          const note = notes.value.find(note => note.id === id);
+          if (note) note.color = color;
+        };
+        
+        const onDragEnd = () => {
+          console.log('New order:', notes.value);
+        };
+        
+        // Initialize with 2 notes
+        if (notes.value.length === 0) {
+          addNote();
+          addNote();
+        }
+        
+        return {
+          colors,
+          fonts,
+          selectedFont,
+          notes,
+          addNote,
+          deleteNote,
+          changeNoteColor,
+          onDragEnd
+        };
+      }
+    })
+    .component('draggable', window.vuedraggable)
+    .mount('#app');
+  </script>
+</body>
+</html>
